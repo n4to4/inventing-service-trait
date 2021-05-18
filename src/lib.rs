@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::io::Error;
 use tokio::net;
 
@@ -30,9 +31,10 @@ impl Server {
         Server { addr: addr.into() }
     }
 
-    pub async fn run<F>(self, handler: F) -> Result<(), Error>
+    pub async fn run<F, Fut>(self, handler: F) -> Result<(), Error>
     where
-        F: Fn(HttpRequest) -> HttpResponse,
+        F: Fn(HttpRequest) -> Fut,
+        Fut: Future<Output = HttpResponse>,
     {
         let listener = net::TcpListener::bind(self.addr).await?;
 
@@ -41,7 +43,7 @@ impl Server {
             let request = read_http_request(&mut stream).await?;
 
             // Call the handler provided by the user
-            let _response = handler(request);
+            let _response = handler(request).await;
 
             write_http_response(&mut stream).await?;
         }
