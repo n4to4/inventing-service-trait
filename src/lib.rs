@@ -66,3 +66,9 @@ async fn write_http_response(_stream: &mut net::TcpStream) -> Result<(), Error> 
 fn handle_error_somehow(_error: Error, _stream: &mut net::TcpStream) {
     todo!()
 }
+
+pub trait Handler {
+    type Future: Future<Output = Result<HttpResponse, Error>>;
+
+    fn call(&mut self, request: HttpRequest) -> Self::Future;
+}
