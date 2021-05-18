@@ -37,7 +37,7 @@ impl Server {
 
     pub async fn run<T>(self, mut handler: T) -> Result<(), Error>
     where
-        T: Handler,
+        T: Handler<HttpRequest, Response = HttpResponse, Error = Error>,
     {
         let listener = net::TcpListener::bind(self.addr).await?;
 
@@ -66,8 +66,10 @@ fn handle_error_somehow(_error: Error, _stream: &mut net::TcpStream) {
     todo!()
 }
 
-pub trait Handler {
-    type Future: Future<Output = Result<HttpResponse, Error>>;
+pub trait Handler<Request> {
+    type Response;
+    type Error;
+    type Future: Future<Output = Result<Self::Response, Self::Error>>;
 
-    fn call(&mut self, request: HttpRequest) -> Self::Future;
+    fn call(&mut self, request: Request) -> Self::Future;
 }

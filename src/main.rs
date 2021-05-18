@@ -63,7 +63,9 @@ fn make_response(_some_data: SomeData) -> HttpResponse {
 #[derive(Clone)]
 struct RequestHandler;
 
-impl Handler for RequestHandler {
+impl Handler<HttpRequest> for RequestHandler {
+    type Response = HttpResponse;
+    type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<HttpResponse, Error>>>>;
 
     fn call(&mut self, request: HttpRequest) -> Self::Future {
@@ -95,13 +97,17 @@ impl<T> Timeout<T> {
     }
 }
 
-impl<T> Handler for Timeout<T>
+impl<R, T> Handler<R> for Timeout<T>
 where
-    T: Handler + Clone + 'static,
+    R: 'static,
+    T: Handler<R> + Clone + 'static,
+    T::Error: From<tokio::time::error::Elapsed>,
 {
-    type Future = Pin<Box<dyn Future<Output = Result<HttpResponse, Error>>>>;
+    type Response = T::Response;
+    type Error = T::Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
-    fn call(&mut self, request: HttpRequest) -> Self::Future {
+    fn call(&mut self, request: R) -> Self::Future {
         let mut this = self.clone();
 
         Box::pin(async move {
@@ -111,7 +117,7 @@ where
             match result {
                 Ok(Ok(response)) => Ok(response),
                 Ok(Err(error)) => Err(error),
-                Err(_timeout_elapsed) => Err(Error::new(ErrorKind::Other, "timeout")),
+                Err(elapsed) => Err(T::Error::from(elapsed)),
             }
         })
     }
@@ -128,13 +134,16 @@ impl<T> JsonContentType<T> {
     }
 }
 
-impl<T> Handler for JsonContentType<T>
+impl<R, T> Handler<R> for JsonContentType<T>
 where
-    T: Handler + Clone + 'static,
+    R: 'static,
+    T: Handler<R, Response = HttpResponse> + Clone + 'static,
 {
-    type Future = Pin<Box<dyn Future<Output = Result<HttpResponse, Error>>>>;
+    type Response = HttpResponse;
+    type Error = T::Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
-    fn call(&mut self, request: HttpRequest) -> Self::Future {
+    fn call(&mut self, request: R) -> Self::Future {
         let mut this = self.clone();
 
         Box::pin(async move {
