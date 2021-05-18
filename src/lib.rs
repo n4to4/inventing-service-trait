@@ -35,10 +35,9 @@ impl Server {
         Server { addr: addr.into() }
     }
 
-    pub async fn run<F, Fut>(self, handler: F) -> Result<(), Error>
+    pub async fn run<T>(self, mut handler: T) -> Result<(), Error>
     where
-        F: Fn(HttpRequest) -> Fut,
-        Fut: Future<Output = Result<HttpResponse, Error>>,
+        T: Handler,
     {
         let listener = net::TcpListener::bind(self.addr).await?;
 
@@ -47,7 +46,7 @@ impl Server {
             let request = read_http_request(&mut stream).await?;
 
             // Call the handler provided by the user
-            match handler(request).await {
+            match handler.call(request).await {
                 Ok(_response) => write_http_response(&mut stream).await?,
                 Err(error) => handle_error_somehow(error, &mut stream),
             }

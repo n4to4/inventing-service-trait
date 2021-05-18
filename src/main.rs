@@ -7,7 +7,13 @@ use toy_service::*;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let server = Server::new("127.0.0.1:3000").await;
-    server.run(handle_request).await?;
+
+    let handler = RequestHandler;
+    let handler = Timeout::new(handler, Duration::from_secs(30));
+    let handler = JsonContentType::new(handler);
+
+    server.run(handler).await?;
+
     Ok(())
 }
 
@@ -80,6 +86,15 @@ struct Timeout<T> {
     duration: Duration,
 }
 
+impl<T> Timeout<T> {
+    fn new(inner_handler: T, duration: Duration) -> Self {
+        Timeout {
+            inner_handler,
+            duration,
+        }
+    }
+}
+
 impl<T> Handler for Timeout<T>
 where
     T: Handler + Clone + 'static,
@@ -105,6 +120,12 @@ where
 #[derive(Clone)]
 struct JsonContentType<T> {
     inner_handler: T,
+}
+
+impl<T> JsonContentType<T> {
+    fn new(inner_handler: T) -> Self {
+        JsonContentType { inner_handler }
+    }
 }
 
 impl<T> Handler for JsonContentType<T>
