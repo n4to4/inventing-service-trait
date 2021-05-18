@@ -7,14 +7,14 @@ async fn main() -> Result<(), std::io::Error> {
     Ok(())
 }
 
-async fn handle_request(request: HttpRequest) -> HttpResponse {
+async fn handle_request(request: HttpRequest) -> Result<HttpResponse, std::io::Error> {
     if request.path() == "/" {
-        HttpResponse::ok("Hello, World!")
+        Ok(HttpResponse::ok("Hello, World!"))
     } else if request.path() == "/important-data" {
         let some_data = fetch_data_from_database().await;
-        make_response(some_data)
+        Ok(make_response(some_data))
     } else {
-        HttpResponse::not_found()
+        Ok(HttpResponse::not_found())
     }
 }
 
