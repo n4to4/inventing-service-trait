@@ -20,6 +20,10 @@ impl HttpResponse {
     pub fn not_found() -> Self {
         HttpResponse
     }
+
+    pub fn set_header(&mut self, _name: &str, _value: &str) {
+        todo!()
+    }
 }
 
 pub struct Server {
